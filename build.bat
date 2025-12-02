@@ -22,7 +22,7 @@ pip install python-docx pandas openpyxl PyMuPDF pyinstaller --quiet --disable-pi
 echo.
 echo [2/4] EXE olusturuluyor (2-3 dakika surebilir)...
 
-python -m PyInstaller --onefile --windowed --name=TBB_Yanit_Sistemi --clean --noconfirm main.py
+python -m PyInstaller --onefile --windowed --name=TBB_Yanit_Sistemi --clean --noconfirm --add-data "logo.png;." main.py
 
 echo.
 echo [3/4] Dagitim klasoru hazirlaniyor...

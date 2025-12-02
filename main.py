@@ -16,7 +16,7 @@ from datetime import datetime
 # Hata yakalama ile import
 try:
     from docx import Document
-    from docx.shared import Pt
+    from docx.shared import Pt, Inches
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     DOCX_AVAILABLE = True
 except ImportError:
@@ -315,43 +315,80 @@ class TBBYanitSistemi:
         return False, None
 
     # ==================== BELGE OLUŞTURMA ====================
-    
+
+    def get_logo_path(self):
+        """Logo dosyasının yolunu bul"""
+        # PyInstaller ile paketlenmiş mi kontrol et
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(base_path, 'logo.png')
+
     def belge_olustur(self, muhatap_kurum, muhatap_alt1, muhatap_alt2, tarih, sayi, tckn, vkn, adsoyad, musteri_durumu):
         """Word belgesi oluştur"""
         doc = Document()
-        
+
         # Stil
         style = doc.styles['Normal']
         style.font.name = 'Times New Roman'
         style.font.size = Pt(12)
-        
+
+        # Header'a logo ekle
+        section = doc.sections[0]
+        header = section.header
+        header_para = header.paragraphs[0]
+        header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        logo_path = self.get_logo_path()
+        if os.path.exists(logo_path):
+            run = header_para.add_run()
+            run.add_picture(logo_path, width=Inches(2.0))
+
+        # Footer ekle
+        footer = section.footer
+        footer_lines = [
+            "Aytemiz Yatırım Bankası A.Ş.  Mersis No: 0125084782600001 Ticaret Sicil No: 1032360",
+            "Genel Müdürlük Adresi: Yamanevler Mah. Ahmet Tevfik İleri Cad. No:22-26A Ümraniye / İstanbul",
+            "Telefon: (90) 216 295 36 36 Faks: (90) 216 295 36 37 E-posta: iletisim@aytemizbank.com.tr",
+            "Web: www.aytemizbank.com.tr"
+        ]
+        for i, line in enumerate(footer_lines):
+            if i == 0:
+                footer_para = footer.paragraphs[0]
+            else:
+                footer_para = footer.add_paragraph()
+            footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            footer_run = footer_para.add_run(line)
+            footer_run.font.size = Pt(8)
+            footer_run.font.name = 'Times New Roman'
+
         # T.C.
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.add_run("T.C.").bold = True
-        
+
         # Muhatap kurumları
         for kurum in [muhatap_kurum, muhatap_alt1, muhatap_alt2]:
             if kurum:
                 pk = doc.add_paragraph()
                 pk.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 pk.add_run(kurum.upper()).bold = True
-        
+
         # Tarih
         pt = doc.add_paragraph()
         pt.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         pt.add_run(tarih or datetime.now().strftime("%d.%m.%Y"))
-        
+
         # İlgi
         doc.add_paragraph()
         doc.add_paragraph(f"İlgi: {tarih} tarihli ve {sayi} sayılı yazınız.")
-        
+
         # Ana metin
         doc.add_paragraph()
-        
+
         kimlik = tckn if tckn else vkn
         kimlik_tipi = "T.C. Kimlik Numaralı" if tckn else "Vergi Kimlik Numaralı"
-        
+
         if "DEĞİL" in musteri_durumu.upper():
             metin = f"İlgi'de kayıtlı yazınıza istinaden Bankamız nezdinde gerekli araştırma yapılmış olup, {kimlik} {kimlik_tipi}"
             if adsoyad:
@@ -362,24 +399,25 @@ class TBBYanitSistemi:
             if adsoyad:
                 metin += f" {adsoyad}"
             metin += " ile ilgili gerekli işlemler yapılmaktadır."
-        
+
         doc.add_paragraph(metin)
-        
+
         # Kapanış
         doc.add_paragraph()
         doc.add_paragraph("Bilgilerinize arz ederiz.")
         doc.add_paragraph()
         doc.add_paragraph("Saygılarımızla,")
         doc.add_paragraph()
-        
+
+        # İmza - SOLA YASLI
         pi1 = doc.add_paragraph()
-        pi1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        pi1.alignment = WD_ALIGN_PARAGRAPH.LEFT
         pi1.add_run("AYTEMİZ YATIRIM BANKASI A.Ş.").bold = True
-        
+
         pi2 = doc.add_paragraph()
-        pi2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        pi2.alignment = WD_ALIGN_PARAGRAPH.LEFT
         pi2.add_run("Genel Müdürlük").bold = True
-        
+
         return doc
 
     # ==================== TEKLİ İŞLEM ARAYÜZÜ ====================
